@@ -270,7 +270,7 @@ $hd_fan_header  = "FANB";                 # used for HD Fan monitoring and print
 
 ## IPMITOOL PATH
 ## The script needs to know where ipmitool is
-$ipmitool = "/usr/local/bin/ipmitool";
+$ipmitool = "/usr/bin/ipmitool";
 
 ## HD POLLING INTERVAL
 ## The controller will only poll the harddrives periodically. Since hard drives change temperature slowly
@@ -508,7 +508,7 @@ sub main
 ################################################# SUBS
 sub get_hd_list
 {
-    my $disk_list = `camcontrol devlist | grep -v "SSD" | grep -v "Verbatim" | grep -v "Kingston" | grep -v "Elements" | sed 's:.*(::;s:).*::;s:,pass[0-9]*::;s:pass[0-9]*,::' | egrep '^[a]*da[0-9]+\$' | tr '\012' ' '`;
+    my $disk_list = `lsblk -d -n -o model,name | grep -v "SSD" | grep -v "Verbatim" | grep -v "Kingston" | grep -v "Elements" | sed 's:.*(::;s:).*::;s:,pass[0-9]*::;s:pass[0-9]*,::' | egrep '^[a]*da[0-9]+\$' | tr '\012' ' '`;
     dprint(3,"$disk_list\n");
 
     my @vals = split(" ", $disk_list);
@@ -528,7 +528,7 @@ sub get_hd_temp
     foreach my $item (@hd_list)
     {
         my $disk_dev = "/dev/$item";
-        my $command = "/usr/local/sbin/smartctl -A $disk_dev | grep Temperature_Celsius";
+        my $command = "/usr/sbin/smartctl -A $disk_dev | grep Current Drive Temperature";
          
         dprint( 3, "$command\n" );
         
@@ -539,7 +539,7 @@ sub get_hd_temp
         my @vals = split(" ", $output);
 
         # grab 10th item from the output, which is the hard drive temperature (on Seagate NAS HDs)
-          my $temp = "$vals[9]";
+          my $temp = "$vals[3]";
         chomp $temp;
         
         if( $temp )
@@ -1067,7 +1067,7 @@ sub set_fan_mode
 sub get_cpu_temp_sysctl
 {
     # significantly more efficient to filter to dev.cpu than to just grep the whole lot!
-    my $core_temps = `sysctl -a dev.cpu | egrep -E \"dev.cpu\.[0-9]+\.temperature\" | awk '{print \$2}' | sed 's/.\$//'`;
+    my $core_temps = `sensors | egrep -E \"Core [0-9]+\" | awk '{print \$3}' | tr -d '+' | sed 's/.0°C//'`;
     chomp($core_temps);
 
     dprint(3,"core_temps:\n$core_temps\n");
